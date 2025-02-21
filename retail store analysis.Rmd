@@ -1,0 +1,298 @@
+---
+title: "Quiz 4 3050"
+author: "Melanie"
+date: "2024-07-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+We will analyze monthly data sales for a new retail store over a period of 6.5 years.The data is measured in thousand of dollars.
+
+#Load the dataset into RStudio and plot a time series graph to visualize the monthly sales data
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+
+library(tseries)
+
+library(forecast)
+library(scales)
+
+```
+ggplot2:
+
+Importance: ggplot2 is a powerful and flexible package for creating complex and informative visualizations in R
+
+tseries:
+
+Importance: The tseries package provides functions for time series analysis and financial time series. It includes tools for performing statistical tests, estimating models, and generating forecasts.
+
+forecast:
+
+Importance: The forecast package provides functions for automatic time series forecasting, . It is widely used for its automatic model selection and accuracy measures.
+
+scales:
+
+Importance: The scales package provides tools for scaling and formatting data in visualizations. It is particularly useful for adjusting axis labels, formatting numbers and dates, and creating visually appealing plots.
+```{r }
+library(ggplot2)
+
+# Load the data
+data <- read.csv("C://Users//FAS//Downloads//timeseries_data.csv")
+
+# Convert the Date column to Date type
+data$Date <- as.Date(paste0(data$Date, "-01"), format = "%Y-%m-%d")
+
+# Convert the Sales data to a time series object
+sales_ts <- ts(data$Sales, start = c(2017, 1), frequency = 12)
+
+# Plot the time series with proper dates and subdivide the year by months
+ggplot(data, aes(x = Date, y = Sales)) +
+  geom_line() +
+  scale_x_date(
+    date_labels = "%Y-%b",
+    breaks = seq(as.Date("2017-01-01"), as.Date("2023-09-01"), by = "6 months")
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Monthly Sales Data", x = "Date", y = "Sales (in thousands)")
+ 
+
+
+
+
+```
+read.csv: This function reads a CSV file into a data frame in R. The path provided ("C://Users//FAS//Downloads//timeseries_data.csv") specifies the location of the file.
+data: The resulting data frame containing the sales data.
+
+paste0(data$Date, "-01"): This adds "-01" to each date string to ensure the date represents the first day of the month, converting it from a monthly format (e.g., "2017-01") to a full date format (e.g., "2017-01-01").
+as.Date(..., format = "%Y-%m-%d"): Converts the modified date strings to Date objects, using the specified format.
+
+ts: This function converts a numeric vector into a time series object.
+data$Sales: The sales data from the data frame.
+start = c(2017, 1): Specifies the start of the time series (January 2017).
+frequency = 12: Indicates that the data has a monthly frequency.
+
+ggplot(data, aes(x = Date, y = Sales)): Initializes the plot with the data frame, mapping the Date column to the x-axis and the Sales column to the y-axis.
+geom_line(): Adds a line graph layer to the plot.
+scale_x_date(...): Customizes the x-axis to handle dates.
+date_labels = "%Y-%b": Formats the date labels to show the year and abbreviated month (e.g., "2017-Jan").
+breaks = seq(...): Sets the date breaks at 6-month intervals, from January 2017 to September 2023.
+theme(axis.text.x = element_text(angle = 45, hjust = 1)): Rotates the x-axis labels 45 degrees for better readability.
+labs(...): Adds labels to the plot, including the title ("Monthly Sales Data") and axis labels ("Date" for the x-axis and "Sales (in thousands)" for the y-axis).
+
+Trend Analysis:
+
+The line graph shows the trend of sales over the period from January 2017 to September 2023.
+If the line shows an upward or downward trajectory, it indicates a trend in the sales data (e.g., increasing sales over time).
+Seasonality:
+
+By looking at the plot, you can identify any recurring patterns or seasonality in the sales data. For example, if there are peaks and troughs at regular intervals, this indicates seasonality.
+Insights for Forecasting:
+
+The visualization helps in understanding the overall behavior of the sales data, which is crucial for building forecasting models. Trends and seasonality patterns identified in the plot will inform the choice of models and parameters for time series forecasting
+
+#. Perform the Augmented Dickey-Fuller (ADF) test on the sales data to determine if it is stationary
+
+```{r}
+# Perform the ADF test
+adf_test <- adf.test(sales_ts)
+
+# Display the results
+print(adf_test)
+
+```
+adf.test(sales_ts): This function call performs the Augmented Dickey-Fuller (ADF) test on the sales_ts time series object.
+
+sales_ts: This is the time series data on which the ADF test is being performed. It contains the monthly sales data, which we have already converted to a time series object.
+
+adf_test <- ...: The result of the ADF test is assigned to the variable adf_test. This variable will hold all the test results, including the test statistic, p-value, lag order, and alternative hypothesis.
+
+
+
+Interpretation of ADF Test Results
+Original Data
+The Augmented Dickey-Fuller (ADF) test results for the original sales data are:
+
+Dickey-Fuller Test Statistic: -10.674
+p-value: 0.01
+Lag Order: 4
+Alternative Hypothesis: Stationary
+Interpretation:
+
+The test statistic (-10.674) is highly negative, which generally indicates stronger evidence against the null hypothesis.
+The p-value (0.01) is less than the typical significance level of 0.05, leading us to reject the null hypothesis that the series is non-stationary.
+This suggests that the original sales data is stationary.
+
+Implications for Further Analysis
+
+Forecasting:
+
+Stationarity is a crucial assumption for many time series forecasting models. With confirmed stationarity, we can proceed to build reliable forecasting models.
+
+Autocorrelation Analysis:
+
+With stationarity confirmed, we can use Autocorrelation Function (ACF) and Partial Autocorrelation Function (PACF) plots to identify significant autocorrelations.
+
+The ACF plot provided in the code will help identify significant autocorrelations and guide the selection of model parameters.
+
+Model Diagnostics and Validation:
+
+After fitting models, diagnostic checks (such as residual analysis) should be performed to ensure that the residuals are white noise (i.e., no remaining autocorrelation).
+
+#Apply the Box-Cox transformation to the sales data to stabilize variance.
+
+```{r}
+# Apply Box-Cox transformation
+lambda <- BoxCox.lambda(sales_ts)
+sales_boxcox <- BoxCox(sales_ts, lambda)
+
+# Create a data frame for the transformed data with dates
+transformed_data <- data.frame(Date = data$Date, Sales = as.numeric(sales_boxcox))
+
+# Ensure Date column is of type Date
+transformed_data$Date <- as.Date(transformed_data$Date)
+
+# Plot the transformed data with proper dates and subdivide the year by months
+ggplot(transformed_data, aes(x = Date, y = Sales)) +
+  geom_line() +
+  scale_x_date(
+    date_labels = "%Y-%b",
+    breaks = seq(as.Date("2017-01-01"), as.Date("2023-09-01"), by = "6 months")
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Box-Cox Transformed Sales Data", x = "Date", y = "Transformed Sales")
+
+
+```
+BoxCox.lambda(sales_ts): Calculates the optimal lambda value for the Box-Cox transformation.
+BoxCox(sales_ts, lambda): Applies the Box-Cox transformation using the calculated lambda.
+
+as.numeric(sales_boxcox): Converts the transformed time series object into a numeric vector.
+
+Ensure the Date column in the new data frame is correctly recognized as a date type.
+
+aes(x = Date, y = Sales): Specifies the aesthetics, mapping the Date column to the x-axis and Sales to the y-axis.
+geom_line(): Adds a line graph layer.
+scale_x_date(...): Formats the x-axis dates.
+date_labels = "%Y-%b": Formats the date labels as "Year-Month".
+breaks = seq(...): Sets the date breaks every 6 months.
+theme(axis.text.x = element_text(angle = 45, hjust = 1)): Rotates the x-axis labels 45 degrees for better readability.
+labs(...): Adds the title and axis labels to the plot.
+
+
+Impact on Distribution
+Variance Stabilization:
+
+The primary purpose of the Box-Cox transformation is to stabilize the variance. By applying the Box-Cox transformation, fluctuations in the data become more consistent over time, leading to a more homogeneous spread of data points.
+
+Normalization:
+
+The Box-Cox transformation can also help in normalizing the data. This means that the transformed data is likely to follow a distribution closer to the normal distribution, which is a desirable property for many statistical methods.
+
+
+Impact on Stationarity
+
+From the graph, it appears that the variance is relatively stable, as the fluctuations around the trend line are more consistent compared to what we might expect from raw, non-transformed data.
+
+#Perform the ADF test on the transformed sales data to confirm stationarity
+```{r}
+# Perform the ADF test on the Box-Cox transformed data
+adf_test_boxcox <- tseries::adf.test(sales_boxcox)
+
+# Display the results
+print(adf_test_boxcox)
+```
+
+
+Function: tseries::adf.test
+
+This function performs the Augmented Dickey-Fuller test, which is used to test for the presence of a unit root in a time series sample. The null hypothesis of this test is that the time series has a unit root (i.e., it is non-stationary).
+Argument: sales_boxcox
+
+This is the time series data that has been transformed using the Box-Cox transformation. The sales_boxcox variable contains the Box-Cox transformed sales data.
+
+Test Statistic: -9.7283
+p-value: 0.01
+Lag Order: 4
+Interpretation:
+Since the p-value is 0.01, which is less than the significance level of 0.05, we reject the null hypothesis of non-stationarity.
+The Dickey-Fuller test statistic of -9.7283 is also highly negative, indicating strong evidence against the null hypothesis of a unit root.
+Therefore, the Box-Cox transformed sales data is considered stationary.
+
+
+#Compute and plot the Autocorrelation Function (ACF) for up to 20 lags of the transformed sales data.
+```{r}
+# Compute and plot the ACF for up to 20 lags of the transformed sales data
+acf_result <- Acf(sales_boxcox, lag.max = 20, plot = FALSE)
+
+# Create a data frame for the ACF values
+acf_data <- data.frame(lag = acf_result$lag, acf = acf_result$acf)
+
+# Plot the ACF
+ggplot(acf_data, aes(x = lag, y = acf)) +
+  geom_bar(stat = "identity") +
+  geom_hline(yintercept = c(-1.96/sqrt(length(sales_boxcox)), 1.96/sqrt(length(sales_boxcox))), linetype = "dashed", color = "red") +
+  labs(title = "ACF of Box-Cox Transformed Sales Data", x = "Lag", y = "ACF") +
+  theme_minimal()
+
+```
+Acf: This function from the forecast package computes the autocorrelation function for a time series.
+sales_boxcox: This is the Box-Cox transformed sales data.
+lag.max = 20: Specifies that the ACF should be computed for up to 20 lags.
+plot = FALSE: Prevents the function from automatically plotting the ACF, as we will create a custom plot using ggplot2.
+
+data.frame: Creates a data frame to store the lag and ACF values.
+acf_result$lag: Extracts the lag values from the acf_result.
+acf_result$acf: Extracts the ACF values from the acf_result.
+
+ggplot:
+
+ggplot(acf_data, aes(x = lag, y = acf)): Initializes the plot with acf_data, mapping the lag to the x-axis and acf to the y-axis.
+geom_bar:
+
+geom_bar(stat = "identity"): Adds bars to the plot. stat = "identity" means the heights of the bars represent the actual ACF values.
+geom_hline:
+
+geom_hline(yintercept = c(-1.96/sqrt(length(sales_boxcox)), 1.96/sqrt(length(sales_boxcox))), linetype = "dashed", color = "red"): Adds horizontal dashed lines at ±1.96/√N, where N is the number of observations in the time series. These lines represent the 95% confidence interval bounds for the ACF. Values outside these bounds are statistically significant at the 5% level.
+labs:
+
+labs(title = "ACF of Box-Cox Transformed Sales Data", x = "Lag", y = "ACF"): Adds labels to the plot, including the title, x-axis label, and y-axis label.
+theme_minimal:
+
+theme_minimal(): Applies a minimal theme to the plot, which provides a clean and simple visual appearance.
+
+Interpretation
+
+Key Observations:
+Significant Lags:
+
+The red dashed lines represent the 95% confidence intervals. Any ACF values outside these bounds are considered statistically significant.
+Significant positive spikes are observed at early lags (up to around lag 15), indicating strong autocorrelation.
+Decay Pattern:
+
+The ACF values show a gradual decline from lag 1 onwards, indicating a persistent autocorrelation structure where past values have a lasting impact on future values.
+This pattern suggests that the series has a long memory, where past values continue to influence future values over many periods.
+Implications for Forecasting:
+Model Selection:
+
+The significant positive autocorrelations at early lags suggest that an AR (AutoRegressive) model would be appropriate. Specifically, an AR model with multiple lags might be necessary to capture the persistent autocorrelation.
+The gradual decay pattern in the ACF indicates that higher-order AR terms may be needed to adequately model the time series.
+
+Forecasting Horizon:
+
+The significant autocorrelations suggest that forecasts can be made with some confidence up to the lags where the autocorrelation is significant. However, as the ACF values gradually decrease, the forecasting model should account for the long memory.
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
